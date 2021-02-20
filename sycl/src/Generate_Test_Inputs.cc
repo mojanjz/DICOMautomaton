@@ -74,9 +74,9 @@ samples_1D<double> make_test_SCDI_C( const samples_1D<double>& AIF,
 int main(int, char**){
 
     // SCDI model parameters.
-    const double k1A = 0.729907; // Mostly arterial supply.
-    const double k1V = 0.500683;
-    const double k2 = 0.201236;  // Slow outflow.
+    const double k1A = 0.75; // Mostly arterial supply.
+    const double k1V = 0.25;
+    const double k2 = 0.25;  // Slow outflow.
 
     // Sampling parameters.
     const double dt = 1.2; // seconds.
@@ -86,39 +86,50 @@ int main(int, char**){
     std::random_device rdev;
     std::mt19937 re( rdev() );
     std::uniform_real_distribution<> ud(0.0, 1.0);
-    double mean = 0.0;
-    double std_dev = 0.5;
+    double mean = 0.1;
+    double std_dev = 0.08;
     std::normal_distribution<> nd(mean, std_dev);
 
     // Make an Arterial input function (AIF) and Venous input function (VIF).
     samples_1D<double> AIF;
+    samples_1D<double> AIF_noise;
     samples_1D<double> VIF;
+    samples_1D<double> VIF_noise;
+
     const bool inhibit_sort = true;
     for(long int i = 0; i < N_samples; ++i){
         const auto t = t_start + dt * static_cast<double>(i);
         if( (i == 0) || (i == 1) ){
             AIF.push_back(t, 0.0, inhibit_sort);
             VIF.push_back(t, 0.0, inhibit_sort);
+            AIF_noise.push_back(t, 0.0, inhibit_sort);
+            VIF_noise.push_back(t, 0.0, inhibit_sort);
         }else{
             // These are purely synthetic, created specifically to mimic the overall shape of real AIF and VIF.
             const double A = std::exp(-std::pow(t-15.0,2.0)/15.0) 
                            + 0.2 * std::exp(-std::pow(t-30.0, 2.0)/15.0)
                            + 0.25 * (10.0 + std::tanh(t-15.0)/0.1) * std::exp(-std::sqrt(t)/1.75);
-            AIF.push_back(t, A + nd(re), inhibit_sort);
+            AIF.push_back(t, A, inhibit_sort);
+            AIF_noise.push_back(t, A + nd(re), inhibit_sort);
 
             const double V = t * (10.0 + std::tanh(t-13.0)/0.1) * std::exp(-std::sqrt(t)/1.75) / 55.0;
-            VIF.push_back(t, V + nd(re), inhibit_sort);
+            VIF.push_back(t, V, inhibit_sort);
+            VIF_noise.push_back(t, V + nd(re), inhibit_sort);
         }
     }
 
     // Using the AIF, VIF, and model parameters, create the C(t) we would observe (if the model were exactly correct).
     const samples_1D<double> C = make_test_SCDI_C(AIF, VIF, k1A, k1V, k2);
+    const samples_1D<double> C_noise = make_test_SCDI_C(AIF_noise, VIF_noise, k1A, k1V, k2);
 
 
     // Write AIF, VIF, and C to file. These files can be used to fit the model and try recover k1A, k1V, and k2.
     AIF.Write_To_File("aif.txt");
+    AIF_noise.Write_To_File("aif_noise.txt");
     VIF.Write_To_File("vif.txt");
+    VIF_noise.Write_To_File("vif_noise.txt");
     C.Write_To_File("c.txt");
+    C_noise.Write_To_File("c_noise.txt");
 
     return 0;
 }
