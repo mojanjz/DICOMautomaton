@@ -189,31 +189,47 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
 
     //Area to GPU accelerate
     //Start with very basic SYCL functionality
-    // Try to add aif and vif to start.
-        const auto N = resampled_aif.size();
-        std::vector<float> dst(N); // Destination; buffer for the result.
-        cl::sycl::range<1> work_items { N };
+    // Try to calculate R -> linear_c_vals (vec of vecs),time_midpoint, sum_aif, sum_vif, AIF_pt, VIF_pt
+    const auto N = linear_c_vals.at(0).size();
+    const auto M = linear_c_vals.size();
+    const auto K = linear_aif_vals.size();
+    cl::sycl::range<1> work_items { M };
 
-    // Create C++ scope to use for SYCL
+    // Flatten linear_c_vals so contiguous memory can be used for buffer
+    //TODO: confirm we can assume all linear_c vectors are of the same length      
+    std::vector<float> flattened_linear_c_vals;
+    // flattened_linear_c_vals.reserve(linear_c_vals.at(0).size() * M);
+    // for (int i = 0; i < M; i++){
+    //     flattened_linear_c_vals.insert(flattened_linear_c_vals.end(),linear_c_vals.at(i).begin(),linear_c_vals.at(i).end());
+    // }
+    FUNCINFO("The size of the flattened vector is" << flattened_linear_c_vals.size());
+    // How to deal with this flattening, linear_c_vals is a vector of 1Dsamples (effectively another vector)
     {
-        // Define buffers
-        cl::sycl::buffer<float> buff_aif(resampled_aif.data(), N);
-        cl::sycl::buffer<float> buff_vif(resampled_vif.data(), N);
-        cl::sycl::buffer<float> buff_dst(dst.data(), N);
-        
-        // Submit work to queue
-        q.submit([&](cl::sycl::handler &cgh) {
-            auto access_aif = buff_aif.get_access<cl::sycl::access::mode::read>(cgh);
-            auto access_vif = buff_vif.get_access<cl::sycl::access::mode::read>(cgh);
-            auto access_dst = buff_dst.get_access<cl::sycl::access::mode::write>(cgh);
-
-
-            cgh.parallel_for<class vector_add>(work_items, [=](cl::sycl::id<1> tid) {
-                access_dst[tid] = access_aif[tid] + access_vif[tid];
-            });
-        });
+        cl::sycl::buffer<samples_1D<float>,1> buff_lin_aif(&linear_aif_vals,cl::sycl::range<1>{1});
     }
-    FUNCINFO("The hundredth dst element is " << dst.at(100));
+    // // Create C++ scope to use for SYCL
+    // {
+    //     // Define buffers
+    //     // cl::sycl::buffer<float> buff_aif(resampled_aif.data(), N);
+    //     // cl::sycl::buffer<float> buff_vif(resampled_vif.data(), N);
+    //     // cl::sycl::buffer<float> buff_dst(dst.data(), N);
+
+    //     cl::sycl::buffer<float> buff_time_midpoint(time_midpoint,1);
+    //     cl::sycl::buffer<>
+
+        
+    //     // Submit work to queue
+    //     q.submit([&](cl::sycl::handler &cgh) {
+    //         // auto access_aif = buff_aif.get_access<cl::sycl::access::mode::read>(cgh);
+    //         // auto access_vif = buff_vif.get_access<cl::sycl::access::mode::read>(cgh);
+    //         // auto access_dst = buff_dst.get_access<cl::sycl::access::mode::write>(cgh);
+
+
+    //         cgh.parallel_for<class vector_add>(work_items, [=](cl::sycl::id<1> tid) {
+    //             // access_dst[tid] = access_aif[tid] + access_vif[tid];
+    //         });
+    //     });
+    // }
 
 
 
@@ -231,6 +247,7 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
         // Find R
         const float R = (C_pt - (sum_of_c.at(i) / sum_of_vif) * VIF_pt) / (AIF_pt - (sum_of_aif / sum_of_vif) * VIF_pt);
         FUNCINFO("R is " << R);
+
         const float Q = c_slope / (AIF_pt - (sum_of_aif / sum_of_vif) * VIF_pt);
         FUNCINFO("Q is " << Q);
         const float N = (sum_of_c.at(i) - R * sum_of_aif) / sum_of_vif;
