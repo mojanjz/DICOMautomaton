@@ -191,21 +191,25 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
     //Start with very basic SYCL functionality
     // Try to calculate R -> linear_c_vals (vec of vecs),time_midpoint, sum_aif, sum_vif, AIF_pt, VIF_pt
     const auto N = linear_c_vals.at(0).size();
+    FUNCINFO("The size of one linear_c_vals row is " << N)
     const auto M = linear_c_vals.size();
     const auto K = linear_aif_vals.size();
     cl::sycl::range<1> work_items { M };
 
     // Flatten linear_c_vals so contiguous memory can be used for buffer
     //TODO: confirm we can assume all linear_c vectors are of the same length      
-    std::vector<float> flattened_linear_c_vals;
-    // flattened_linear_c_vals.reserve(linear_c_vals.at(0).size() * M);
-    // for (int i = 0; i < M; i++){
-    //     flattened_linear_c_vals.insert(flattened_linear_c_vals.end(),linear_c_vals.at(i).begin(),linear_c_vals.at(i).end());
-    // }
+    samples_1D<float> flattened_linear_c_vals;
+    for (int i = 0; i < M; i++){
+        for (int j = 0; j < N; j++){
+            flattened_linear_c_vals.push_back(linear_c_vals.at(i).samples.at(j)); //How to index samples_1D????
+        }
+    }
     FUNCINFO("The size of the flattened vector is" << flattened_linear_c_vals.size());
-    // How to deal with this flattening, linear_c_vals is a vector of 1Dsamples (effectively another vector)
+    // How to deal with this flattening, linear_c_vals is a vector of 1Dsamples (effectively another vector)? Also can we make a buffer for 1dsample type? YES!
     {
         cl::sycl::buffer<samples_1D<float>,1> buff_lin_aif(&linear_aif_vals,cl::sycl::range<1>{1});
+        // cl::sycl::buffer<samples_1D<float>,1> buff_lin_c(&flattened_linear_c_vals,cl::sycl::range<1>{1});
+
     }
     // // Create C++ scope to use for SYCL
     // {
