@@ -27,6 +27,14 @@ cIfilt = signal.filtfilt(b, a, cI)
 cIfilt=np.array(cIfilt)
 cIfilt=cIfilt.transpose()
 
+# write filtered data back into a txt file
+zeroArr = np.zeros((cT.shape[0],), dtype=int)
+data = np.column_stack((cT,zeroArr, cIfilt, zeroArr))
+with open('data/sanitized_c.txt', 'w') as txt_file:
+    for row in data:
+        line = ' '.join(str(v) for v in row)
+        txt_file.write(line + "\n") # works with any number of elements in a line
+
 ax.plot(cT, cIfilt, 'b', linewidth=1)
 ax.set_xlabel('Time (s)',fontsize=18)
 ax.set_ylabel('Contrast Enhancement Intensity',fontsize=18)

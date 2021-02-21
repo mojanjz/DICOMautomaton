@@ -10,15 +10,20 @@ from decimal import Decimal
 #     cT = [float(line.split()[0]) for line in lines]
 #     cVal = [float(line.split()[2]) for line in lines]
     
-with open('data/c_noise.txt') as f: #grab expected data
+with open('data/c.txt') as f: #grab expected data
     lines = f.readlines()
     cET = [float(line.split()[0]) for line in lines]
     cEVal = [float(line.split()[2]) for line in lines]
 
-with open('data/c.txt') as f: # grab our data generated with presence of noise
+with open('data/c_noise.txt') as f: # grab our data generated with presence of noise
     lines = f.readlines()
     cNT = [float(line.split()[0]) for line in lines]
     cNVal = [float(line.split()[2]) for line in lines]
+
+with open('data/sanitized_c.txt') as f: # grab our data generated with presence of noise
+    lines = f.readlines()
+    cST = [float(line.split()[0]) for line in lines]
+    cSVal = [float(line.split()[2]) for line in lines]
 
 print("Type of data: ", type(cET[0]))
 
@@ -66,6 +71,7 @@ ax1.set_ylabel('Intensity')
 # ax1.plot(cT,cVal, c='r', label='Our output')
 ax1.plot(cET,cEVal, c='b', label='Expected output')
 ax1.plot(cNT,cNVal, c='g', label='Our output (with Gaussian Noise)')
+ax1.plot(cST,cSVal, c='r', label='Our sanitized output')
 
 # ax1 = fig.add_subplot(1,3,2)
 # ax1.set_title("AIF")    
