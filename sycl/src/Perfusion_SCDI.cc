@@ -128,8 +128,9 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
     const float sum_of_aif = std::accumulate(resampled_aif.begin(), resampled_aif.end(), 0.0f);
     const float sum_of_vif = std::accumulate(resampled_vif.begin(), resampled_vif.end(), 0.0f);
     std::vector<float> sum_of_c;
+    //TODO: GPU accelerate
     for(auto c : resampled_c) sum_of_c.push_back(std::accumulate(c.begin(), c.end(), 0.0f));
-    // FUNCINFO("sum of aif " << sum_of_aif << " sum of vif " << sum_of_vif << " sum of c " << sum_of_c);
+    FUNCINFO("size of aif" << resampled_aif.size() << " size of vif " << resampled_vif.size());
 
     // Linear approximation at large t
     std::vector<samples_1D<float>> linear_c_vals;
@@ -187,6 +188,35 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
                    std::plus<float>()); //aif_sum = resampled_aif + shifted_aif
 
     //Area to GPU accelerate
+    //Start with very basic SYCL functionality
+    // Try to add aif and vif to start.
+        const auto N = resampled_aif.size();
+        std::vector<float> dst(N); // Destination; buffer for the result.
+        cl::sycl::range<1> work_items { N };
+
+    // Create C++ scope to use for SYCL
+    {
+        // Define buffers
+        cl::sycl::buffer<float> buff_aif(resampled_aif.data(), N);
+        cl::sycl::buffer<float> buff_vif(resampled_vif.data(), N);
+        cl::sycl::buffer<float> buff_dst(dst.data(), N);
+        
+        // Submit work to queue
+        q.submit([&](cl::sycl::handler &cgh) {
+            auto access_aif = buff_aif.get_access<cl::sycl::access::mode::read>(cgh);
+            auto access_vif = buff_vif.get_access<cl::sycl::access::mode::read>(cgh);
+            auto access_dst = buff_dst.get_access<cl::sycl::access::mode::write>(cgh);
+
+
+            cgh.parallel_for<class vector_add>(work_items, [=](cl::sycl::id<1> tid) {
+                access_dst[tid] = access_aif[tid] + access_vif[tid];
+            });
+        });
+    }
+    FUNCINFO("The hundredth dst element is " << dst.at(100));
+
+
+
     for(unsigned long i = 0; i < linear_c_vals.size(); i++) {
         const auto c_res       = linear_c_vals.at(i).Linear_Least_Squares_Regression();
         const auto c_slope     = static_cast<float>(c_res.slope);
