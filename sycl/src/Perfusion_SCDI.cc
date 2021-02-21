@@ -84,6 +84,10 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
     //
     // The following will re-sample all time courses using a fixed step size 'dt' using linear interpolation.
     // I think it will suffice for this project, but we might have to adjust it later.
+
+    // Setup queue for SYCL
+    cl::sycl::queue q(cl::sycl::default_selector{});
+
     const auto resample = [](const samples_1D<double> &s) -> std::vector<float> {
         const double dt      = TIME_INTERVAL; // units of seconds.
         const auto cropped   = s.Select_Those_Within_Inc(0.0, std::numeric_limits<double>::infinity());
@@ -117,7 +121,6 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
     // TODO: Re-evaluate vector of a vector
     std::vector<std::vector<float>> resampled_c;
     for(const auto &c : C) resampled_c.emplace_back(resample(c));
-
 
     // Perfusion model implementation should be placed here using resampled time courses.
 
@@ -183,6 +186,7 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
     std::transform(resampled_aif.begin(), resampled_aif.end(), shifted_aif.begin(), back_inserter(aif_sum),
                    std::plus<float>()); //aif_sum = resampled_aif + shifted_aif
 
+    //Area to GPU accelerate
     for(unsigned long i = 0; i < linear_c_vals.size(); i++) {
         const auto c_res       = linear_c_vals.at(i).Linear_Least_Squares_Regression();
         const auto c_slope     = static_cast<float>(c_res.slope);
@@ -295,7 +299,6 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
     std::vector<double> lhs = { 1.0, -2.0, 0.0, -2.5, 10.0 };
     std::vector<double> rhs = { -1.0, 2.0, -0.0, 2.5, -10.0 };
 
-    cl::sycl::queue q(cl::sycl::cpu_selector{});
     auto result = vec_add(q, lhs, rhs); // Performs vector summation using SYCL on CPU, GPU, FPGA, ...
 
     double sum = 0.0;
