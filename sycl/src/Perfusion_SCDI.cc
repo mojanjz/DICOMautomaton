@@ -189,28 +189,65 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
 
     //Area to GPU accelerate
     //Start with very basic SYCL functionality
-    // Try to calculate R -> linear_c_vals (vec of vecs),time_midpoint, sum_aif, sum_vif, AIF_pt, VIF_pt
+    // Try to calculate R -> linear_c_vals (vec of vecs), sum of c, time_midpoint, sum_aif, sum_vif, AIF_pt, VIF_pt
     const auto N = linear_c_vals.at(0).size();
-    FUNCINFO("The size of one linear_c_vals row is " << N)
     const auto M = linear_c_vals.size();
-    const auto K = linear_aif_vals.size();
+    float R_test = 0;
+    FUNCINFO("The size of one linear_c_vals row is " << N)
+
     cl::sycl::range<1> work_items { M };
 
     // Flatten linear_c_vals so contiguous memory can be used for buffer
-    //TODO: confirm we can assume all linear_c vectors are of the same length      
     samples_1D<float> flattened_linear_c_vals;
     for (int i = 0; i < M; i++){
         for (int j = 0; j < N; j++){
-            flattened_linear_c_vals.push_back(linear_c_vals.at(i).samples.at(j)); //How to index samples_1D????
+            flattened_linear_c_vals.push_back(linear_c_vals.at(i).samples.at(j));
         }
     }
     FUNCINFO("The size of the flattened vector is" << flattened_linear_c_vals.size());
-    // How to deal with this flattening, linear_c_vals is a vector of 1Dsamples (effectively another vector)? Also can we make a buffer for 1dsample type? YES!
+
+    // Create C++ scope to use for SYCL
     {
-        cl::sycl::buffer<samples_1D<float>,1> buff_lin_aif(&linear_aif_vals,cl::sycl::range<1>{1});
-        // cl::sycl::buffer<samples_1D<float>,1> buff_lin_c(&flattened_linear_c_vals,cl::sycl::range<1>{1});
+        // Define buffers
+        cl::sycl::buffer<samples_1D<float>,1> buff_lin_c(&flattened_linear_c_vals,cl::sycl::range<1>{1});
+        cl::sycl::buffer<float> buff_sum_of_c(sum_of_c.data(),sum_of_c.size());
+        cl::sycl::buffer<float> buff_time_midpoint(&time_midpoint,1);
+        cl::sycl::buffer<float> buff_sum_of_aif(&sum_of_aif,1);
+        cl::sycl::buffer<float> buff_sum_of_vif(&sum_of_vif,1);
+        cl::sycl::buffer<float> buff_AIF_pt(&AIF_pt,1);
+        cl::sycl::buffer<float> buff_VIF_pt(&VIF_pt,1);
+        cl::sycl::buffer<float> buff_R(&R_test,1);
+
+
+        // Submit work to queue
+        q.submit([&](cl::sycl::handler &cgh) {
+            //Define accessors
+            auto access_lin_c = buff_lin_c.get_access<cl::sycl::access::mode::read>(cgh);
+            auto access_sum_of_c = buff_sum_of_c.get_access<cl::sycl::access::mode::read>(cgh);
+            auto access_time_midpoint = buff_time_midpoint.get_access<cl::sycl::access::mode::read>(cgh);
+            auto access_sum_of_aif = buff_sum_of_aif.get_access<cl::sycl::access::mode::read>(cgh);
+            auto access_sum_of_vif = buff_sum_of_vif.get_access<cl::sycl::access::mode::read>(cgh);
+            auto access_AIF_pt = buff_AIF_pt.get_access<cl::sycl::access::mode::read>(cgh);
+            auto access_VIF_pt = buff_VIF_pt.get_access<cl::sycl::access::mode::read>(cgh);
+            auto access_R = buff_R.get_access<cl::sycl::access::mode::write>(cgh);
+
+            
+            cgh.parallel_for<class vector_add>(work_items, [=](cl::sycl::id<1> tid) {
+                // access_dst[tid] = access_aif[tid] + access_vif[tid];
+                // access_R = access_sum_of_c[tid];
+                //(C_pt - (sum_of_c.at(i) / sum_of_vif) * VIF_pt) / (AIF_pt - (sum_of_aif / sum_of_vif) * VIF_pt);
+                FUNCINFO("R");
+            });
+        });
+        
+
+
+
 
     }
+    FUNCINFO("R_test is" << R_test);
+
+
     // // Create C++ scope to use for SYCL
     // {
     //     // Define buffers
