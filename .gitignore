@@ -10,10 +10,19 @@ aif.txt
 vif.txt
 c.txt
 *.txt
+sycl/data
 
 # Compiled Static libraries
 *.la
 *.a
+settings.json
+
+
+
+#Data files
+aif.txt
+vif.txt
+c.txt
 
 # Executables
 automaton
@@ -30,3 +39,4 @@ dcma_integration_testing/
 
 # Other
 settings.json
+

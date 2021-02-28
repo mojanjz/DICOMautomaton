@@ -53,6 +53,10 @@ vec_add(cl::sycl::queue &q, const std::vector<double> &lhs, const std::vector<do
         cl::sycl::buffer<double> buff_rhs(rhs.data(), N);
         cl::sycl::buffer<double> buff_dst(dst.data(), N);
 
+        std::cout << "Running on "
+            << q.get_device().get_info<cl::sycl::info::device::name>()
+            << "\n";
+
         q.submit([&](cl::sycl::handler &cgh) {
             auto access_lhs = buff_lhs.get_access<cl::sycl::access::mode::read>(cgh);
             auto access_rhs = buff_rhs.get_access<cl::sycl::access::mode::read>(cgh);
@@ -122,30 +126,37 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
     const float sum_of_vif = std::accumulate(resampled_vif.begin(), resampled_vif.end(), 0.0f);
     const float sum_of_c   = std::accumulate(resampled_c.front().begin(), resampled_c.front().end(), 0.0f);
     //FUNCINFO("sum of aif " << sum_of_aif << " sum of vif " << sum_of_vif << " sum of c " << sum_of_c);
+    std::vector<float> sum_of_c;
+    for(auto c : resampled_c) sum_of_c.push_back(std::accumulate(c.begin(), c.end(), 0.0f));
+    // FUNCINFO("sum of aif " << sum_of_aif << " sum of vif " << sum_of_vif << " sum of c " << sum_of_c);
 
     // Linear approximation at large t
-    samples_1D<float> linear_c_vals;
+    std::vector<samples_1D<float>> linear_c_vals;
     samples_1D<float> linear_aif_vals;
     samples_1D<float> linear_vif_vals;
 
+    for(unsigned long i = 0; i < resampled_c.size(); i++) {
+        samples_1D<float> c;
+        linear_c_vals.push_back(c);
+    }
 
-    const auto c_size       = static_cast<long int>(resampled_c.front().size());
+    const auto c_size       = static_cast<long int>(resampled_c.front().size()); // all c vectors are the same size
     const auto slope_window = 100L;
+
     for(auto i = (c_size - slope_window); i < c_size; i++) {
         float t = TIME_INTERVAL * i;
-        linear_c_vals.push_back(t, resampled_c.front().at(i));
+        for(unsigned long j = 0; j < resampled_c.size(); j++) {
+            linear_c_vals.at(j).push_back(t, resampled_c.at(j).at(i)); // update every vector in the resampled_c vector
+        }
         linear_aif_vals.push_back(t, resampled_aif.at(i));
         linear_vif_vals.push_back(t, resampled_vif.at(i));
     }
     //FUNCINFO("Length of linear_c_vals: " << linear_c_vals.size());
 
-    // Approximate region by a line
-    const auto c_res   = linear_c_vals.Linear_Least_Squares_Regression();
+    // Approximate region by a line, all C related calculations are in the for loop
     const auto aif_res = linear_aif_vals.Linear_Least_Squares_Regression();
     const auto vif_res = linear_vif_vals.Linear_Least_Squares_Regression();
 
-    const auto c_slope       = static_cast<float>(c_res.slope);
-    const auto c_intercept   = static_cast<float>(c_res.intercept);
     const auto aif_slope     = static_cast<float>(aif_res.slope);
     const auto aif_intercept = static_cast<float>(aif_res.intercept);
     const auto vif_slope     = static_cast<float>(vif_res.slope);
@@ -155,8 +166,7 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
     //FUNCINFO("The amount of data points in C is " << c_size);
 
     // Find eqn 2
-    const float time_midpoint = static_cast<float>(c_size -  (slope_window) * 0.5 )* TIME_INTERVAL;
-    const float C_pt          = time_midpoint * c_slope + c_intercept;
+    const float time_midpoint = static_cast<float>(c_size - (slope_window)*0.5) * TIME_INTERVAL;
     const float VIF_pt        = time_midpoint * vif_slope + vif_intercept;
     const float AIF_pt        = time_midpoint * aif_slope + aif_intercept;
 
@@ -173,7 +183,6 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
     // Construct AIF(t-dt), VIF(t-dt), C(t-dt)
     std::vector<float> shifted_aif = resampled_aif;
     std::vector<float> shifted_vif = resampled_vif;
-    std::vector<float> shifted_c   = resampled_c.front();
 
     // Create the shifted vectors by removing the first element
     // Remove the last element of the resampled vectors to ensure same size for inner products
@@ -181,38 +190,14 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
     resampled_aif.pop_back();
     shifted_vif.erase(shifted_vif.begin());
     resampled_vif.pop_back();
-    shifted_c.erase(shifted_c.begin());
-    resampled_c.front().pop_back();
 
-    std::vector<float> D;       //see math for definition
-    std::vector<float> E;       //see math for definition
-    std::vector<float> F;       //see math for definition
-    std::vector<float> G;       //see math for definition
     std::vector<float> vif_sum; //this is defined as vif(t)+vif(t-T)
     std::vector<float> aif_sum; //this is defined as aif(t)+aif(t-T)
-    std::vector<float> c_sum;   //this is defined as c(t)+c(t-T)
-    std::vector<float> c_diff;  //this is defined as c(t)-c(t-T)
 
     std::transform(resampled_vif.begin(), resampled_vif.end(), shifted_vif.begin(), back_inserter(vif_sum),
                    std::plus<float>()); //vif_sum = resampled_vif + shifted_vif
     std::transform(resampled_aif.begin(), resampled_aif.end(), shifted_aif.begin(), back_inserter(aif_sum),
                    std::plus<float>()); //aif_sum = resampled_aif + shifted_aif
-    std::transform(resampled_c.front().begin(), resampled_c.front().end(), shifted_c.begin(), back_inserter(c_diff),
-                   std::minus<float>()); //c_diff = resampled_c - shifted_c
-    std::transform(resampled_c.front().begin(), resampled_c.front().end(), shifted_c.begin(), back_inserter(c_sum),
-                   std::plus<float>()); //c_sum = resampled_c + shifted_c
-
-    //Computation of D
-    D = c_diff;
-    MultiplyVectorByScalar(D, 2.0f); // gives us D(t)=2(c(t)-c(t-T))
-
-    //Use these to be able to multiply by scalars/add them without changing the orginal values
-    std::vector<float> vif_sum_temp = vif_sum;
-    std::vector<float> aif_sum_temp = aif_sum;
-
-    //Computation of F
-    MultiplyVectorByScalar(vif_sum_temp, (-Q * sum_of_aif / sum_of_vif));
-    MultiplyVectorByScalar(aif_sum_temp, Q);
 
     std::transform(vif_sum_temp.begin(), vif_sum_temp.end(), aif_sum_temp.begin(), back_inserter(F),
                    std::plus<float>()); //adds the two above and saves them to F
@@ -281,7 +266,7 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
     std::vector<double> lhs = { 1.0, -2.0, 0.0, -2.5, 10.0 };
     std::vector<double> rhs = { -1.0, 2.0, -0.0, 2.5, -10.0 };
 
-    cl::sycl::queue q;
+    cl::sycl::queue q(cl::sycl::gpu_selector{});
     auto result = vec_add(q, lhs, rhs); // Performs vector summation using SYCL on CPU, GPU, FPGA, ...
 
     double sum = 0.0;

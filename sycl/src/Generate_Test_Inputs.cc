@@ -73,7 +73,7 @@ main(int, char**) {
     // SCDI model parameters.
     const double k1A = 0.75; // Mostly arterial supply.
     const double k1V = 0.25;
-    const double k2  = 0.25; // Slow outflow.
+    const double k2 = 0.15;  // Slow outflow.
 
     std::ofstream kParamsFile("inputkParams.txt");
 
@@ -81,9 +81,7 @@ main(int, char**) {
         kParamsFile << k1A << " " << k1V << " " << k2;
         kParamsFile.close();
     }
-
-    // Sampling parameters.
-    const double dt          = 1.2; // seconds.
+    
     const double t_start     = 0.0; // seconds.
     const long int N_samples = 100; // number of CT/MR images taken serially.
 
