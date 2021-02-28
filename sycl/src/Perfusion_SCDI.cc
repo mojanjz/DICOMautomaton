@@ -194,6 +194,17 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
         const float C_pt = time_midpoint * c_slope + c_intercept;
         FUNCINFO("C point is " << C_pt << " VIF point is " << VIF_pt << " AIF point is " << AIF_pt);
 
+
+        //Slope plotting visualization
+        samples_1D<float> slopeVisual;
+
+        for(float tVal = time_midpoint-10.0f; tVal < time_midpoint+10.0f; tVal++) {
+            slopeVisual.push_back(tVal, (tVal * c_slope + c_intercept));
+        }
+
+        slopeVisual.Write_To_File("slopeVisual.txt");
+        //End of visualization
+
         // Find R
         const float R = (C_pt - (sum_of_c.at(i) / sum_of_vif) * VIF_pt) / (AIF_pt - (sum_of_aif / sum_of_vif) * VIF_pt);
         FUNCINFO("R is " << R);
