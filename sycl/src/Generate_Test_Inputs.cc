@@ -82,6 +82,7 @@ main(int, char**) {
         kParamsFile.close();
     }
     
+    const double dt = 1.2; // seconds.
     const double t_start     = 0.0; // seconds.
     const long int N_samples = 100; // number of CT/MR images taken serially.
 
