@@ -9,6 +9,7 @@
 aif.txt
 vif.txt
 c.txt
+*.txt
 
 # Compiled Static libraries
 *.la
