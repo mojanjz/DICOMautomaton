@@ -2,7 +2,7 @@ import numpy as np #importing numpy module for efficiently executing numerical o
 import matplotlib.pyplot as plt #importing the pyplot from the matplotlib library
 from scipy import signal
 
-with open('data/c_noise.txt') as f:
+with open('data/input/c_noise.txt') as f:
     lines = f.readlines()
     c_t = [float(line.split()[0]) for line in lines]
     c_i = [float(line.split()[2]) for line in lines]
@@ -30,7 +30,8 @@ cIfilt=cIfilt.transpose()
 # write filtered data back into a txt file
 zeroArr = np.zeros((cT.shape[0],), dtype=int)
 data = np.column_stack((cT,zeroArr, cIfilt, zeroArr))
-with open('data/sanitized_c.txt', 'w') as txt_file:
+with open('data/input/sanitized_c.txt', 'w') as txt_file:
+    txt_file.write('0.0 0 0.0 0\n')
     for row in data:
         line = ' '.join(str(v) for v in row)
         txt_file.write(line + "\n") # works with any number of elements in a line

@@ -75,6 +75,13 @@ main(int, char**) {
     const double k1V = 0.25;
     const double k2  = 0.25; // Slow outflow.
 
+    std::ofstream kParamsFile("inputkParams.txt");
+
+    if (kParamsFile.is_open()) {
+        kParamsFile << k1A << " " << k1V << " " << k2;
+        kParamsFile.close();
+    }
+
     // Sampling parameters.
     const double dt          = 1.2; // seconds.
     const double t_start     = 0.0; // seconds.
