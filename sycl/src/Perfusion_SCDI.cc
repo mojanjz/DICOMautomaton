@@ -31,6 +31,7 @@
 #include "Perfusion_SCDI.h"
 
 #define TIME_INTERVAL 0.1 //In units of seconds
+long slope_window;
 
 // This SYCL-powered function performs vector summation. It can run on CPU, GPU, FPGA, etc.
 // It is only here to demonstrate roughly how SYCL is used.
@@ -53,7 +54,7 @@ vec_add(cl::sycl::queue &q, const std::vector<double> &lhs, const std::vector<do
         cl::sycl::buffer<double> buff_rhs(rhs.data(), N);
         cl::sycl::buffer<double> buff_dst(dst.data(), N);
 
-        std::cout << "Running on " << q.get_device().get_info<cl::sycl::info::device::name>() << "\n";
+        // std::cout << "Running on " << q.get_device().get_info<cl::sycl::info::device::name>() << "\n";
 
         q.submit([&](cl::sycl::handler &cgh) {
             auto access_lhs = buff_lhs.get_access<cl::sycl::access::mode::read>(cgh);
@@ -136,8 +137,7 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
         linear_c_vals.push_back(c);
     }
 
-    const auto c_size       = static_cast<long int>(resampled_c.front().size()); // all c vectors are the same size
-    const auto slope_window = 100L;
+    const auto c_size = static_cast<long int>(resampled_c.front().size()); // all c vectors are the same size
 
     for(auto i = (c_size - slope_window); i < c_size; i++) {
         float t = TIME_INTERVAL * i;
@@ -261,8 +261,8 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
         //const auto test = G[ G.size() + 1 ];
         //FUNCINFO("Avoiding optimizing away by printing " << test);
 
-        //FUNCINFO("G.E = " << GE_inner_product);
-        //FUNCINFO("E.E = " << EE_inner_product);
+        // FUNCINFO("G.E = " << GE_inner_product);
+        // FUNCINFO("E.E = " << EE_inner_product);
 
         // Get the kinetic parameters from the calculated inner products
         const float k2   = GE_inner_product / EE_inner_product;
@@ -270,7 +270,7 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
         const float k1_B = N * k2 - Q * sum_of_aif / sum_of_vif;
         //FUNCINFO("K2: " << k2 << " k1A: " << k1_A << " k1B: " << k1_B);
         std::cout << slope_window << " " << c_slope << " " << c_intercept << " " << time_midpoint << " " << k1_A << " "
-                  << k1_B << " " << k2;
+                  << k1_B << " " << k2 << "\n";
 
         std::ofstream kParamsFile("kParams.txt");
         //kParamsFile.open("kParams.txt");

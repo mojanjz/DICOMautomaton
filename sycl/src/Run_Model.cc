@@ -51,6 +51,7 @@ main(int argc, char *argv[]) {
     bool PlaceholderBoolean       = false;
     double PlaceholderDouble      = 1.0;
     float PlaceholderFloat        = -1.0;
+    slope_window                  = 100;
     std::string PlaceholderString = "placeholder";
 
     //================================================ Argument Parsing ==============================================
@@ -125,6 +126,12 @@ main(int argc, char *argv[]) {
                                           return;
                                       }));
 
+    arger.push_back(ygor_arg_handlr_t(3, 'w', "slope-window", true, "slope window for calculations",
+                                      "slope window for calculation.", [&](const std::string &optarg) -> void {
+                                          slope_window = std::stof(optarg);
+                                          return;
+                                      }));
+
     arger.Launch(argc, argv);
 
     //============================================= Input Validation ================================================
@@ -148,7 +155,7 @@ main(int argc, char *argv[]) {
     Launch_SCDI(AIF, VIF, C);
     timestamp_t t1 = get_timestamp();
     double secs    = (t1 - t0) / 1000000.0L;
-    FUNCINFO("Runtime:" << secs);
+    // FUNCINFO("Runtime:" << secs);
     return 0;
 }
 

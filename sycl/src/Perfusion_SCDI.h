@@ -19,7 +19,8 @@
 void Launch_SCDI(samples_1D<double> &, samples_1D<double> &, std::vector<samples_1D<double>> &);
 
 void MultiplyVectorByScalar(std::vector<float> &v, float k);
-
+// slope window set by run_model used by Perfusion_SCDI for testing purposes
+extern long slope_window;
 /* For Benchmarking Purposes */
 typedef unsigned long long timestamp_t;
 
