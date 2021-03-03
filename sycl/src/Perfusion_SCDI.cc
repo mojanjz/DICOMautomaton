@@ -32,6 +32,9 @@
 
 #define TIME_INTERVAL 0.1 //In units of seconds
 
+class MyKernelClass; //TODO: Rename this better
+class MyKernelClass2;
+
 // This SYCL-powered function performs vector summation. It can run on CPU, GPU, FPGA, etc.
 // It is only here to demonstrate roughly how SYCL is used.
 static std::vector<double>
@@ -193,11 +196,18 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
     const auto N = linear_c_vals.at(0).size();
     const auto M = linear_c_vals.size();
     float R_test = 0;
+    samples_1D<float> c_res_test; //TODO: RENAME THIS, not result of linear regression any more
+    auto c_slope_test;
+    auto c_intercept_test;
+    auto C_pt_test;
     FUNCINFO("The size of one linear_c_vals row is " << N)
 
-    cl::sycl::range<1> work_items { M };
+    cl::sycl::range<1> c_work_items { M };
+    cl::sycl::range<1> indv_work_items { N };
+
 
     // Flatten linear_c_vals so contiguous memory can be used for buffer
+    // To access 
     samples_1D<float> flattened_linear_c_vals;
     for (int i = 0; i < M; i++){
         for (int j = 0; j < N; j++){
@@ -210,13 +220,19 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
     {
         // Define buffers
         cl::sycl::buffer<samples_1D<float>,1> buff_lin_c(&flattened_linear_c_vals,cl::sycl::range<1>{1});
-        cl::sycl::buffer<float> buff_sum_of_c(sum_of_c.data(),sum_of_c.size());
+        cl::sycl::buffer<float> buff_sum_of_c(sum_of_c.data(),sum_of_c.size()); //Checked
         cl::sycl::buffer<float> buff_time_midpoint(&time_midpoint,1);
         cl::sycl::buffer<float> buff_sum_of_aif(&sum_of_aif,1);
         cl::sycl::buffer<float> buff_sum_of_vif(&sum_of_vif,1);
-        cl::sycl::buffer<float> buff_AIF_pt(&AIF_pt,1);
+        cl::sycl::buffer<float> buff_AIF_pt(&AIF_pt,1); //Checked
         cl::sycl::buffer<float> buff_VIF_pt(&VIF_pt,1);
         cl::sycl::buffer<float> buff_R(&R_test,1);
+        cl::sycl::buffer<samples_1D<float>,1> buff_c_res(&c_res_test,cl::sycl::range<1>{1});
+        cl::sycl::buffer<float> buff_c_slope(&c_slope_test,1);
+        cl::sycl::buffer<float> buff_c_intercept(&c_intercept_test,1);
+        cl::sycl::buffer<float> buff_C_pt(&C_pt_test,1);
+
+
 
 
         // Submit work to queue
@@ -229,14 +245,28 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
             auto access_sum_of_vif = buff_sum_of_vif.get_access<cl::sycl::access::mode::read>(cgh);
             auto access_AIF_pt = buff_AIF_pt.get_access<cl::sycl::access::mode::read>(cgh);
             auto access_VIF_pt = buff_VIF_pt.get_access<cl::sycl::access::mode::read>(cgh);
-            auto access_R = buff_R.get_access<cl::sycl::access::mode::write>(cgh);
+            auto access_R = buff_R.get_access<cl::sycl::access::mode::read_write>(cgh);
+            auto access_c_res = buff_c_res.get_access<cl::sycl::access::mode::read_write>(cgh);
+            auto access_c_slope = buff_c_slope.get_access<cl::sycl::access::mode::read_write>(cgh);
+            auto access_c_intercept = buff_c_intercept.get_access<cl::sycl::access::mode::read_write>(cgh);
+            auto access_C_pt = buff_C_pt.get_access<cl::sycl::access::mode::read_write>(cgh);
 
             
-            cgh.parallel_for<class vector_add>(work_items, [=](cl::sycl::id<1> tid) {
-                // access_dst[tid] = access_aif[tid] + access_vif[tid];
-                // access_R = access_sum_of_c[tid];
-                //(C_pt - (sum_of_c.at(i) / sum_of_vif) * VIF_pt) / (AIF_pt - (sum_of_aif / sum_of_vif) * VIF_pt);
-                FUNCINFO("R");
+            cgh.parallel_for<class MyKernelClass>(c_work_items, [=](cl::sycl::id<1> cid) {
+                FUNCINFO("In parallelized for loop!");
+                for (int i=0; i<N; i++){
+                    access_c_res.push_back(access_lin_c[i]);
+                }
+                
+
+                // FUNCINFO("Calculating C_pt");
+                // cgh.parallel_for<class MyKernelClass2>(indv_work_items, [=](cl::sycl::id<1> iid) {
+                //     FUNCINFO("HI");
+                // }); 
+                // access_c_slope[0] = access_lin_c[].Linear_Least_Squares_Regression().slope;
+                // access_C_pt[0] = access_time_midpoint[0] * access_c_slope[0] + access_c_intercept[0];
+
+                // access_R[0] = access_AIF_pt[0];
             });
         });
         
