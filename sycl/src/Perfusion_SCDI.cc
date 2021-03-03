@@ -53,9 +53,7 @@ vec_add(cl::sycl::queue &q, const std::vector<double> &lhs, const std::vector<do
         cl::sycl::buffer<double> buff_rhs(rhs.data(), N);
         cl::sycl::buffer<double> buff_dst(dst.data(), N);
 
-        std::cout << "Running on "
-            << q.get_device().get_info<cl::sycl::info::device::name>()
-            << "\n";
+        std::cout << "Running on " << q.get_device().get_info<cl::sycl::info::device::name>() << "\n";
 
         q.submit([&](cl::sycl::handler &cgh) {
             auto access_lhs = buff_lhs.get_access<cl::sycl::access::mode::read>(cgh);
@@ -188,19 +186,19 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
         const auto c_slope     = static_cast<float>(c_res.slope);
         const auto c_intercept = static_cast<float>(c_res.intercept);
 
-        FUNCINFO("The slope is " << c_slope);
-        FUNCINFO("The amount of data points in C is " << c_size);
+        // FUNCINFO("The slope is " << c_slope);
+        // FUNCINFO("The amount of data points in C is " << c_size);
 
         const float C_pt = time_midpoint * c_slope + c_intercept;
-        FUNCINFO("C point is " << C_pt << " VIF point is " << VIF_pt << " AIF point is " << AIF_pt);
+        // FUNCINFO("C point is " << C_pt << " VIF point is " << VIF_pt << " AIF point is " << AIF_pt);
 
         // Find R
         const float R = (C_pt - (sum_of_c.at(i) / sum_of_vif) * VIF_pt) / (AIF_pt - (sum_of_aif / sum_of_vif) * VIF_pt);
-        FUNCINFO("R is " << R);
+        // FUNCINFO("R is " << R);
         const float Q = c_slope / (AIF_pt - (sum_of_aif / sum_of_vif) * VIF_pt);
-        FUNCINFO("Q is " << Q);
+        // FUNCINFO("Q is " << Q);
         const float N = (sum_of_c.at(i) - R * sum_of_aif) / sum_of_vif;
-        FUNCINFO("N is " << N);
+        // FUNCINFO("N is " << N);
 
         // Construct C(t-dt)
         std::vector<float> shifted_c = resampled_c.at(i);
@@ -263,18 +261,20 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
         //const auto test = G[ G.size() + 1 ];
         //FUNCINFO("Avoiding optimizing away by printing " << test);
 
-        FUNCINFO("G.E = " << GE_inner_product);
-        FUNCINFO("E.E = " << EE_inner_product);
+        //FUNCINFO("G.E = " << GE_inner_product);
+        //FUNCINFO("E.E = " << EE_inner_product);
 
         // Get the kinetic parameters from the calculated inner products
         const float k2   = GE_inner_product / EE_inner_product;
         const float k1_A = R * k2 + Q;
         const float k1_B = N * k2 - Q * sum_of_aif / sum_of_vif;
-        FUNCINFO("K2: " << k2 << " k1A: " << k1_A << " k1B: " << k1_B);
+        //FUNCINFO("K2: " << k2 << " k1A: " << k1_A << " k1B: " << k1_B);
+        std::cout << slope_window << " " << c_slope << " " << c_intercept << " " << time_midpoint << " " << k1_A << " "
+                  << k1_B << " " << k2;
 
         std::ofstream kParamsFile("kParams.txt");
-    //kParamsFile.open("kParams.txt");
-        if (kParamsFile.is_open()) {
+        //kParamsFile.open("kParams.txt");
+        if(kParamsFile.is_open()) {
             kParamsFile << k1_A << " " << k1_B << " " << k2 << "\n";
             kParamsFile.close();
         }
@@ -294,7 +294,7 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
             for(int j = 0; j < 4; ++j) { coeff_sum += C(i, j) * 1.23; }
         }
 
-        FUNCINFO("The Eigen example coefficient sum is " << coeff_sum);
+        //FUNCINFO("The Eigen example coefficient sum is " << coeff_sum);
     }
 
 
@@ -302,16 +302,16 @@ Launch_SCDI(samples_1D<double> &AIF, samples_1D<double> &VIF, std::vector<sample
     std::vector<double> lhs = { 1.0, -2.0, 0.0, -2.5, 10.0 };
     std::vector<double> rhs = { -1.0, 2.0, -0.0, 2.5, -10.0 };
 
-    cl::sycl::queue q(cl::sycl::cpu_selector{});
+    cl::sycl::queue q(cl::sycl::cpu_selector {});
     auto result = vec_add(q, lhs, rhs); // Performs vector summation using SYCL on CPU, GPU, FPGA, ...
 
     double sum = 0.0;
     for(const auto x : result) sum += x;
 
     if((sum < -1E-6) || (1E-6 < sum)) {
-        FUNCERR("Sum = " << sum << " (should be 0.0)");
+        // FUNCERR("Sum = " << sum << " (should be 0.0)");
     } else {
-        FUNCINFO("SYCL function ran successfully.");
+        // FUNCINFO("SYCL function ran successfully.");
     }
 
     return;
