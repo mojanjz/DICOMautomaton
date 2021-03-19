@@ -74,9 +74,9 @@ make_output_c(const samples_1D<double>& AIF, const samples_1D<double>& VIF, doub
 int
 main(int argc, char *argv[]) {
     // SCDI model parameters.
-    const double k1A = 0.00117036; // Mostly arterial supply.
-    const double k1V = 0.0179035;
-    const double k2  = 0.0718663; // Slow outflow.
+    const double k1A = 0.0151061; // Mostly arterial supply.
+    const double k1V = 0.00497988;
+    const double k2  = 0.116115; // Slow outflow.
 
     // Make an Arterial input function (AIF) and Venous input function (VIF).
     samples_1D<double> AIF;
