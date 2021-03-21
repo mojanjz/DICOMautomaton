@@ -140,9 +140,9 @@ Launch_SCSI(samples_1D<double> &AIF, std::vector<samples_1D<double>> &C) {
         const float k1_A = dc_gain * k2;
 
         FUNCINFO("K2: " << k2 << " k1A: " << k1_A);
-
-        std::ofstream kParamsFile("kParams.txt");
-    //kParamsFile.open("kParams.txt");
+        // appends to the same file
+        std::ofstream kParamsFile;
+        kParamsFile.open ("kParamsSCSI.txt", std::ofstream::out | std::ofstream::app);
         if (kParamsFile.is_open()) {
             kParamsFile << k1_A << " " << k2 << "\n";
             kParamsFile.close();
